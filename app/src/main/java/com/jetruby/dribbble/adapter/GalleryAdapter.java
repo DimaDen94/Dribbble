@@ -12,7 +12,7 @@ import android.widget.ImageView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.jetruby.dribbble.R;
-import com.jetruby.dribbble.model.Image;
+import com.jetruby.dribbble.model.Shot;
 
 import java.util.List;
 
@@ -22,7 +22,7 @@ import java.util.List;
 
 public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.MyViewHolder> {
 
-    private List<Image> images;
+    private List<Shot> shots;
     private Context mContext;
 
     public class MyViewHolder extends RecyclerView.ViewHolder {
@@ -35,9 +35,9 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.MyViewHo
     }
 
 
-    public GalleryAdapter(Context context, List<Image> images) {
+    public GalleryAdapter(Context context, List<Shot> shots) {
         mContext = context;
-        this.images = images;
+        this.shots = shots;
     }
 
     @Override
@@ -50,9 +50,9 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.MyViewHo
 
     @Override
     public void onBindViewHolder(MyViewHolder holder, int position) {
-        Image image = images.get(position);
+        Shot shot = shots.get(position);
 
-        Glide.with(mContext).load(image.getMedium())
+        Glide.with(mContext).load(shot.getMedium())
                 .thumbnail(0.5f)
                 .crossFade()
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
@@ -61,7 +61,7 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.MyViewHo
 
     @Override
     public int getItemCount() {
-        return images.size();
+        return shots.size();
     }
 
     public interface ClickListener {
