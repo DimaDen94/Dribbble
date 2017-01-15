@@ -7,20 +7,22 @@ import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.widget.Toast;
 
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
-import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.JsonArrayRequest;
 import com.jetruby.dribbble.R;
 import com.jetruby.dribbble.adapter.GalleryAdapter;
 import com.jetruby.dribbble.app.AppController;
 import com.jetruby.dribbble.model.Shot;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-
 
 
 public class MainActivity extends AppCompatActivity {
@@ -63,13 +65,35 @@ public class MainActivity extends AppCompatActivity {
         pDialog.show();
 
 
-        JsonObjectRequest jsObjRequest = new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
+        JsonArrayRequest jsObjRequest = new JsonArrayRequest(Request.Method.GET, url, null, new Response.Listener<JSONArray>() {
 
             @Override
-            public void onResponse(JSONObject response) {
-                // TODO Auto-generated method stub
-                System.out.print("Response => "+response.toString());
+            public void onResponse(JSONArray response) {
+                try {
+                    shots.clear();
+                    for (int i = 0; i < 10; i++) {
 
+                        JSONObject jShot = (JSONObject) response
+                                .get(i);
+                        Shot shot = new Shot();
+
+                        shot.setId(jShot.getInt("id"));
+                        shot.setTitle(jShot.getString("title"));
+                        shot.setDate(jShot.getString("date"));
+                        shot.setDescription(jShot.getString("description"));
+
+                        shot.setHidpi(jShot.getString("hidpi"));
+                        shot.setNormal(jShot.getString("normal"));
+                        shot.setTeaser(jShot.getString("teaser"));
+
+                        shots.add(shot);
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(),
+                            "Error: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                }
             }
         }, new Response.ErrorListener() {
 
@@ -79,7 +103,6 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-
 
 
         // Adding request to request queue

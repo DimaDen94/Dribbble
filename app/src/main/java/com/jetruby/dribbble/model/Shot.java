@@ -7,28 +7,21 @@ public class Shot implements Serializable {
     private String title;
     private String date;
     private String description;
-    private int likes_count;
-    private int views_count;
-    private int comments_count;
-    private String comments_url;
-    private String small, medium, large;
+
+    private String hidpi, normal, teaser;
 
 
     public Shot() {
     }
 
-    public Shot(int id, String title, String date, String description, int likes_count, int views_count, int comments_count, String comments_url, String small, String medium, String large) {
+    public Shot(int id, String title, String date, String description, String hidpi, String normal, String teaser) {
         this.id = id;
         this.title = title;
         this.date = date;
         this.description = description;
-        this.likes_count = likes_count;
-        this.views_count = views_count;
-        this.comments_count = comments_count;
-        this.comments_url = comments_url;
-        this.small = small;
-        this.medium = medium;
-        this.large = large;
+        this.hidpi = hidpi;
+        this.normal = normal;
+        this.teaser = teaser;
     }
 
     public int getId() {
@@ -55,14 +48,6 @@ public class Shot implements Serializable {
         this.date = date;
     }
 
-    public int getLikes_count() {
-        return likes_count;
-    }
-
-    public void setLikes_count(int likes_count) {
-        this.likes_count = likes_count;
-    }
-
     public String getDescription() {
         return description;
     }
@@ -71,51 +56,29 @@ public class Shot implements Serializable {
         this.description = description;
     }
 
-    public int getViews_count() {
-        return views_count;
+
+    public String getHidpi() {
+        return hidpi;
     }
 
-    public void setViews_count(int views_count) {
-        this.views_count = views_count;
+    public void setHidpi(String hidpi) {
+        this.hidpi = hidpi;
     }
 
-    public int getComments_count() {
-        return comments_count;
+
+    public String getNormal() {
+        return normal;
     }
 
-    public void setComments_count(int comments_count) {
-        this.comments_count = comments_count;
+    public void setNormal(String normal) {
+        this.normal = normal;
     }
 
-    public String getSmall() {
-        return small;
+    public String getTeaser() {
+        return teaser;
     }
 
-    public void setSmall(String small) {
-        this.small = small;
-    }
-
-    public String getComments_url() {
-        return comments_url;
-    }
-
-    public void setComments_url(String comments_url) {
-        this.comments_url = comments_url;
-    }
-
-    public String getMedium() {
-        return medium;
-    }
-
-    public void setMedium(String medium) {
-        this.medium = medium;
-    }
-
-    public String getLarge() {
-        return large;
-    }
-
-    public void setLarge(String large) {
-        this.large = large;
+    public void setTeaser(String teaser) {
+        this.teaser = teaser;
     }
 }
