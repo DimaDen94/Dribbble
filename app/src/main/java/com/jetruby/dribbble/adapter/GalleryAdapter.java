@@ -11,10 +11,12 @@ import android.widget.ImageView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+
+import java.util.List;
 import com.jetruby.dribbble.R;
 import com.jetruby.dribbble.model.Shot;
 
-import java.util.List;
+
 
 
 
@@ -52,7 +54,7 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.MyViewHo
     public void onBindViewHolder(MyViewHolder holder, int position) {
         Shot shot = shots.get(position);
 
-        Glide.with(mContext).load(shot.getNormal())
+        Glide.with(mContext).load(shot.getTeaser())
                 .thumbnail(0.5f)
                 .crossFade()
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
