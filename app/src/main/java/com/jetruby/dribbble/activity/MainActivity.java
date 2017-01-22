@@ -6,8 +6,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.widget.Toast;
 
 import com.android.volley.AuthFailureError;
@@ -33,9 +31,17 @@ import java.util.Map;
 public class MainActivity extends AppCompatActivity {
 
     private String TAG = MainActivity.class.getSimpleName();
-    private static final String auth = "https://api.dribbble.com/v1/shots?access_token=";
-    private static final String token = "b37bed181156700973bdaf9d2ca0d749a04723719f524a27d67303421fbba5b3";
-    private static final String url = auth + token;
+    private static final String auth = "https://api.dribbble.com/v1/shots?";
+    int pageCount = 1;
+    String page = "page=" + pageCount;
+
+    int perCount = 50;
+    String per = "&per_page=" + perCount;
+
+    private static final String token = "&access_token=b37bed181156700973bdaf9d2ca0d749a04723719f524a27d67303421fbba5b3";
+    String url = auth + page + per + token;
+
+
     private ArrayList<Shot> shots;
     private ProgressDialog pDialog;
     private GalleryAdapter mAdapter;
@@ -46,8 +52,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        //Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        //setSupportActionBar(toolbar);
 
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
 
@@ -55,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
         shots = new ArrayList<>();
         mAdapter = new GalleryAdapter(this, shots);
 
-        RecyclerView.LayoutManager mLayoutManager = new GridLayoutManager(getApplicationContext(), 2);
+        RecyclerView.LayoutManager mLayoutManager = new GridLayoutManager(getApplicationContext(), 1);
         recyclerView.setLayoutManager(mLayoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.setAdapter(mAdapter);
@@ -70,7 +74,6 @@ public class MainActivity extends AppCompatActivity {
         pDialog.show();
 
 
-
         JsonArrayRequest jsObjRequest = new JsonArrayRequest(Request.Method.GET, url, null, new Response.Listener<JSONArray>() {
 
             @Override
@@ -78,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
                 //Log.d("Debug", response.toString());
                 try {
                     shots.clear();
-                    for (int i = 0; i < 10; i++) {
+                    for (int i = 0; i < 50; i++) {
 
                         JSONObject jShot = (JSONObject) response
                                 .get(i);
@@ -88,12 +91,18 @@ public class MainActivity extends AppCompatActivity {
 
 
                         JSONObject jImages = jShot.getJSONObject("images");
-                        shot.setHidpi((String) jImages.get("hidpi"));
+                        //shot.setHidpi((String) jImages.get("hidpi"));
                         shot.setNormal((String) jImages.get("normal"));
                         shot.setTeaser((String) jImages.get("teaser"));
                         shots.add(shot);
                     }
                     mAdapter.notifyDataSetChanged();
+                    try {
+                        pDialog.cancel();
+                    }catch (Exception e){
+
+                    }
+
                 } catch (JSONException e) {
                     e.printStackTrace();
                     Toast.makeText(getApplicationContext(),
@@ -109,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
                 // TODO Auto-generated method stub
 
             }
-        }){
+        }) {
 
             @Override
             public Map<String, String> getHeaders() throws AuthFailureError {
