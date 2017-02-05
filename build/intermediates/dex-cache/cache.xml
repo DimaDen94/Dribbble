@@ -25,7 +25,7 @@
         jumboMode="true"
         optimize="true"
         revision="23.0.3"
-        sha1="6befdea80538f9a40b3c1f16c0c3f1309f4b5504">
+        sha1="22745e4574fecb6df49f2295e55ef4891d8655b6">
         <dex dex="D:\WORK\Dribbble\Dribbble\app\build\intermediates\pre-dexed\debug\instant-run_06148cbf01bd9f2b12549850324c23d0e60b3fbf.jar" />
     </item>
     <item
@@ -106,7 +106,7 @@
         jumboMode="true"
         optimize="true"
         revision="23.0.3"
-        sha1="60a99b086c8e13aaead87c0a03b048ecfca9e8ac">
+        sha1="33b286724f93dc4b8d1a2fb84d17e18028d69342">
         <dex dex="D:\WORK\Dribbble\Dribbble\app\build\intermediates\pre-dexed\debug\instant-run-bootstrap_73c89385d3e16f4d54f8968441a71cf9caa68823.jar" />
     </item>
     <item
