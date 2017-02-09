@@ -12,6 +12,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.text.Html;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -80,7 +81,8 @@ public class MainActivity extends AppCompatActivity {
             loadDataFromDB();
         }
     }
-    private void loadDataFromDB(){
+
+    private void loadDataFromDB() {
         Cursor cursor = getContentResolver().query(FeedEntry.CONTENT_URI, null, null,
                 null, null);
         //startManagingCursor(cursor);
@@ -109,6 +111,7 @@ public class MainActivity extends AppCompatActivity {
 
             mAdapter.notifyDataSetChanged();
     }
+
     public void addDataToDB(Shot shot) {
         ContentValues values = new ContentValues();
         values.put(FeedEntry.TITLE, shot.getTitle());
@@ -121,6 +124,7 @@ public class MainActivity extends AppCompatActivity {
 
         Log.d("tag", "insert, result Uri : " + newUri.toString());
     }
+
     protected boolean checkNetwork() {
         String cs = Context.CONNECTIVITY_SERVICE;
         ConnectivityManager cm = (ConnectivityManager)
@@ -131,6 +135,7 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
     }
+
     private void loadJsonFromServer() {
 
         pDialog.setMessage("Downloading json...");
@@ -141,21 +146,38 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(JSONArray response) {
                 //Log.d("Debug", response.toString());
-                ContentResolver cr = getContentResolver();
-                cr.delete(DataForDB.FeedEntry.CONTENT_URI, null, null);
+                try {
+                    ContentResolver cr = getContentResolver();
+                    cr.delete(DataForDB.FeedEntry.CONTENT_URI, null, null);
+                } catch (Exception e) {
+                }
+
                 try {
                     shots.clear();
                     for (int i = 0; i < 50; i++) {
 
                         JSONObject jShot = (JSONObject) response
                                 .get(i);
+                        if (jShot.getString("animated").equals("true")) {
+
+                            continue;
+                        }
+
                         Shot shot = new Shot();
                         shot.setId(jShot.getInt("id"));
                         shot.setTitle(jShot.getString("title"));
 
 
+                        shot.setDescription(stripHtml(jShot.getString("description")));
+
+
                         JSONObject jImages = jShot.getJSONObject("images");
-                        //shot.setHidpi((String) jImages.get("hidpi"));
+                        try {
+                            shot.setHidpi((String) jImages.get("hidpi"));
+                        } catch (Exception e) {
+                        }
+
+
                         shot.setNormal((String) jImages.get("normal"));
                         shot.setTeaser((String) jImages.get("teaser"));
                         shots.add(shot);
@@ -174,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
                             "Error: " + e.getMessage(),
                             Toast.LENGTH_LONG).show();
                 }
-                Log.d("log",response.toString());
+                Log.d("log", response.toString());
             }
         }, new Response.ErrorListener() {
 
@@ -196,5 +218,9 @@ public class MainActivity extends AppCompatActivity {
 
         // Adding request to request queue
         AppController.getInstance().addToRequestQueue(jsObjRequest);
+    }
+
+    public String stripHtml(String html) {
+        return Html.fromHtml(html).toString();
     }
 }

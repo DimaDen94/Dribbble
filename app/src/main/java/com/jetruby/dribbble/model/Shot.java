@@ -8,6 +8,16 @@ public class Shot implements Serializable {
     private String date;
     private String description;
 
+    public String getAnimated() {
+        return animated;
+    }
+
+    public void setAnimated(String animated) {
+        this.animated = animated;
+    }
+
+    private String animated;
+
     private String hidpi, normal, teaser;
 
 
