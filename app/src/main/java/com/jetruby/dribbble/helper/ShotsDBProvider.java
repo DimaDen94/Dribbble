@@ -18,7 +18,7 @@ import static com.jetruby.dribbble.helper.DataForDB.FeedEntry;
  * Created by Dmitry on 05.02.2017.
  */
 
-public class ShotsContactsProvider extends ContentProvider {
+public class ShotsDBProvider extends ContentProvider {
 
     private static final int DATABASE_VERSION = 1;
     private static final String DATABASE_NAME = "shots.db";

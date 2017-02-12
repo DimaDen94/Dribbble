@@ -8,6 +8,7 @@ import android.database.Cursor;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.GridLayoutManager;
@@ -38,7 +39,7 @@ import java.util.Map;
 import static com.jetruby.dribbble.helper.DataForDB.FeedEntry;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements SwipeRefreshLayout.OnRefreshListener {
     private String TAG = MainActivity.class.getSimpleName();
     private static final String auth = "https://api.dribbble.com/v1/shots?";
     int pageCount = 1;
@@ -52,20 +53,18 @@ public class MainActivity extends AppCompatActivity {
 
 
     private ArrayList<Shot> shots;
-    private ProgressDialog pDialog;
     private GalleryAdapter mAdapter;
     private RecyclerView recyclerView;
-
+    private SwipeRefreshLayout swipeRefreshLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        swipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_refresh_layout);
+        recyclerView = (RecyclerView) findViewById(R.id.listView);
 
-        recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
-
-        pDialog = new ProgressDialog(this);
         shots = new ArrayList<>();
         mAdapter = new GalleryAdapter(this, shots);
 
@@ -74,9 +73,16 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.setAdapter(mAdapter);
 
-
+        swipeRefreshLayout.setOnRefreshListener(this);
         if (checkNetwork()) {
-            loadJsonFromServer();
+            swipeRefreshLayout.post(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            swipeRefreshLayout.setRefreshing(true);
+                                            loadJsonFromServer();
+                                        }
+                                    }
+            );
         } else {
             loadDataFromDB();
         }
@@ -138,9 +144,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadJsonFromServer() {
 
-        pDialog.setMessage("Downloading json...");
-        pDialog.show();
-
+        swipeRefreshLayout.setRefreshing(true);
         JsonArrayRequest jsObjRequest = new JsonArrayRequest(Request.Method.GET, url, null, new Response.Listener<JSONArray>() {
 
             @Override
@@ -172,11 +176,12 @@ public class MainActivity extends AppCompatActivity {
 
 
                         JSONObject jImages = jShot.getJSONObject("images");
+
+                        
                         try {
                             shot.setHidpi((String) jImages.get("hidpi"));
                         } catch (Exception e) {
                         }
-
 
                         shot.setNormal((String) jImages.get("normal"));
                         shot.setTeaser((String) jImages.get("teaser"));
@@ -184,11 +189,6 @@ public class MainActivity extends AppCompatActivity {
                         addDataToDB(shot);
                     }
                     mAdapter.notifyDataSetChanged();
-                    try {
-                        pDialog.cancel();
-                    } catch (Exception e) {
-
-                    }
 
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -197,13 +197,14 @@ public class MainActivity extends AppCompatActivity {
                             Toast.LENGTH_LONG).show();
                 }
                 Log.d("log", response.toString());
+                swipeRefreshLayout.setRefreshing(false);
             }
         }, new Response.ErrorListener() {
 
             @Override
             public void onErrorResponse(VolleyError error) {
                 // TODO Auto-generated method stub
-
+                swipeRefreshLayout.setRefreshing(false);
             }
         }) {
 
@@ -222,5 +223,11 @@ public class MainActivity extends AppCompatActivity {
 
     public String stripHtml(String html) {
         return Html.fromHtml(html).toString();
+    }
+
+
+    @Override
+    public void onRefresh() {
+        loadJsonFromServer();
     }
 }
