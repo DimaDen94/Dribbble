@@ -1,12 +1,13 @@
 package com.jetruby.dribbble.activity;
 
-import android.app.ProgressDialog;
+import android.content.AsyncQueryHandler;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -15,7 +16,6 @@ import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
@@ -26,6 +26,7 @@ import com.jetruby.dribbble.R;
 import com.jetruby.dribbble.adapter.GalleryAdapter;
 import com.jetruby.dribbble.app.AppController;
 import com.jetruby.dribbble.helper.DataForDB;
+import com.jetruby.dribbble.helper.ShotsDBProvider;
 import com.jetruby.dribbble.model.Shot;
 
 import org.json.JSONArray;
@@ -40,7 +41,6 @@ import static com.jetruby.dribbble.helper.DataForDB.FeedEntry;
 
 
 public class MainActivity extends AppCompatActivity implements SwipeRefreshLayout.OnRefreshListener {
-    private String TAG = MainActivity.class.getSimpleName();
     private static final String auth = "https://api.dribbble.com/v1/shots?";
     int pageCount = 1;
     String page = "page=" + pageCount;
@@ -51,7 +51,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
     private static final String token = "&access_token=b37bed181156700973bdaf9d2ca0d749a04723719f524a27d67303421fbba5b3";
     String url = auth + page + per + token;
 
-
+    ContentValues values;
     private ArrayList<Shot> shots;
     private GalleryAdapter mAdapter;
     private RecyclerView recyclerView;
@@ -83,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
                                         }
                                     }
             );
+
         } else {
             loadDataFromDB();
         }
@@ -118,18 +119,12 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             mAdapter.notifyDataSetChanged();
     }
 
-    public void addDataToDB(Shot shot) {
-        ContentValues values = new ContentValues();
-        values.put(FeedEntry.TITLE, shot.getTitle());
-        values.put(FeedEntry.DATE, shot.getDate());
-        values.put(FeedEntry.DESCRIPTION, shot.getDescription());
-        values.put(FeedEntry.HIDPI, shot.getHidpi());
-        values.put(FeedEntry.NORMAL, shot.getNormal());
-        values.put(FeedEntry.TEASER, shot.getTeaser());
-        Uri newUri = getContentResolver().insert(FeedEntry.CONTENT_URI, values);
+    private void addShotsToDB() {
 
-        Log.d("tag", "insert, result Uri : " + newUri.toString());
+
     }
+
+
 
     protected boolean checkNetwork() {
         String cs = Context.CONNECTIVITY_SERVICE;
@@ -149,7 +144,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
 
             @Override
             public void onResponse(JSONArray response) {
-                //Log.d("Debug", response.toString());
+
                 try {
                     ContentResolver cr = getContentResolver();
                     cr.delete(DataForDB.FeedEntry.CONTENT_URI, null, null);
@@ -160,45 +155,37 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
                     shots.clear();
                     for (int i = 0; i < 50; i++) {
 
-                        JSONObject jShot = (JSONObject) response
-                                .get(i);
+                        JSONObject jShot = (JSONObject) response.get(i);
+                        //if animated take next shot
                         if (jShot.getString("animated").equals("true")) {
-
                             continue;
                         }
-
                         Shot shot = new Shot();
                         shot.setId(jShot.getInt("id"));
                         shot.setTitle(jShot.getString("title"));
-
-
                         shot.setDescription(stripHtml(jShot.getString("description")));
 
 
                         JSONObject jImages = jShot.getJSONObject("images");
+                        shot.setHidpi(jImages.getString("hidpi"));
+                        shot.setNormal(jImages.getString("normal"));
+                        shot.setTeaser(jImages.getString("teaser"));
 
-                        
-                        try {
-                            shot.setHidpi((String) jImages.get("hidpi"));
-                        } catch (Exception e) {
-                        }
-
-                        shot.setNormal((String) jImages.get("normal"));
-                        shot.setTeaser((String) jImages.get("teaser"));
                         shots.add(shot);
-                        addDataToDB(shot);
+
                     }
                     mAdapter.notifyDataSetChanged();
 
                 } catch (JSONException e) {
                     e.printStackTrace();
-                    Toast.makeText(getApplicationContext(),
-                            "Error: " + e.getMessage(),
-                            Toast.LENGTH_LONG).show();
                 }
-                Log.d("log", response.toString());
+
                 swipeRefreshLayout.setRefreshing(false);
+                TheTask savetoDB = new TheTask();
+
+                savetoDB.execute();
             }
+
         }, new Response.ErrorListener() {
 
             @Override
@@ -216,7 +203,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             }
         };
 
-
+        addShotsToDB();
         // Adding request to request queue
         AppController.getInstance().addToRequestQueue(jsObjRequest);
     }
@@ -229,5 +216,33 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
     @Override
     public void onRefresh() {
         loadJsonFromServer();
+    }
+
+
+    class TheTask extends AsyncTask<Void, Void, String> {
+
+        @Override
+        protected String doInBackground(Void... params) {
+            for (int i = 0; i < shots.size(); i++) {
+                addDataToDB(shots.get(i));
+            }
+            return null;
+        }
+        public void addDataToDB(Shot shot) {
+            values = new ContentValues();
+            values.put(FeedEntry.TITLE, shot.getTitle());
+            values.put(FeedEntry.DATE, shot.getDate());
+            values.put(FeedEntry.DESCRIPTION, shot.getDescription());
+            values.put(FeedEntry.HIDPI, shot.getHidpi());
+            values.put(FeedEntry.NORMAL, shot.getNormal());
+            values.put(FeedEntry.TEASER, shot.getTeaser());
+            Uri newUri = getContentResolver().insert(FeedEntry.CONTENT_URI, values);
+            //TheTask savetoDB = new TheTask();
+
+            //savetoDB.execute(values);
+            //Log.d("tag", "insert, result Uri : " + newUri.toString());
+        }
+
+
     }
 }
