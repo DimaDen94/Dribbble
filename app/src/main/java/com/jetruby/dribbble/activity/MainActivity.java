@@ -96,9 +96,8 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
                         if ((visibleItemCount + pastVisiblesItems) >= totalItemCount) {
                             loading = false;
 
-                            //Do pagination.. i.e. fetch new data
+                           //its not work, i don't know why
                             pageCount++;
-
                             Runnable thread = new Runnable() {
                                 @Override
                                 public void run() {
