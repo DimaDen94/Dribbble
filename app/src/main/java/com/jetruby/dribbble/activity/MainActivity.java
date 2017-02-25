@@ -1,12 +1,10 @@
 package com.jetruby.dribbble.activity;
 
-import android.content.AsyncQueryHandler;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.widget.SwipeRefreshLayout;
@@ -15,7 +13,6 @@ import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
-import android.util.Log;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
@@ -26,7 +23,6 @@ import com.jetruby.dribbble.R;
 import com.jetruby.dribbble.adapter.GalleryAdapter;
 import com.jetruby.dribbble.app.AppController;
 import com.jetruby.dribbble.helper.DataForDB;
-import com.jetruby.dribbble.helper.ShotsDBProvider;
 import com.jetruby.dribbble.model.Shot;
 
 import org.json.JSONArray;
@@ -42,20 +38,26 @@ import static com.jetruby.dribbble.helper.DataForDB.FeedEntry;
 
 public class MainActivity extends AppCompatActivity implements SwipeRefreshLayout.OnRefreshListener {
     private static final String auth = "https://api.dribbble.com/v1/shots?";
-    int pageCount = 1;
-    String page = "page=" + pageCount;
-
-    int perCount = 50;
-    String per = "&per_page=" + perCount;
-
     private static final String token = "&access_token=b37bed181156700973bdaf9d2ca0d749a04723719f524a27d67303421fbba5b3";
-    String url = auth + page + per + token;
+
+    String pageTag = "pageTag=";
+    volatile int pageCount = 1;
+
+    String perTag = "&per_page=";
+    int perCount = 50;
+
+    volatile String url = auth + pageTag + pageCount + perTag + perCount + token;
 
     ContentValues values;
     private ArrayList<Shot> shots;
     private GalleryAdapter mAdapter;
     private RecyclerView recyclerView;
     private SwipeRefreshLayout swipeRefreshLayout;
+
+
+    private boolean loading = true;
+    int pastVisiblesItems, visibleItemCount, totalItemCount;
+    GridLayoutManager mLayoutManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,21 +70,61 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         shots = new ArrayList<>();
         mAdapter = new GalleryAdapter(this, shots);
 
-        RecyclerView.LayoutManager mLayoutManager = new GridLayoutManager(getApplicationContext(), 1);
+
+
+
+
+
+
+        mLayoutManager = new GridLayoutManager(getApplicationContext(), 1);
+
         recyclerView.setLayoutManager(mLayoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.setAdapter(mAdapter);
 
+
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                if (dy > 0) //check for scroll down
+                {
+                    visibleItemCount = mLayoutManager.getChildCount();
+                    totalItemCount = mLayoutManager.getItemCount();
+                    pastVisiblesItems = mLayoutManager.findFirstVisibleItemPosition();
+
+                    if (loading) {
+                        if ((visibleItemCount + pastVisiblesItems) >= totalItemCount) {
+                            loading = false;
+
+                            //Do pagination.. i.e. fetch new data
+                            pageCount++;
+
+                            Runnable thread = new Runnable() {
+                                @Override
+                                public void run() {
+                                    loadShotsFromServer2(url);
+                                }
+                            };
+                            thread.run();
+
+                        }
+                    }
+                }
+            }
+        });
+
+
         swipeRefreshLayout.setOnRefreshListener(this);
         if (checkNetwork()) {
-            swipeRefreshLayout.post(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            swipeRefreshLayout.setRefreshing(true);
-                                            loadJsonFromServer();
-                                        }
-                                    }
-            );
+            Runnable thread = new Runnable() {
+                @Override
+                public void run() {
+                    swipeRefreshLayout.setRefreshing(true);
+                    loadShotsFromServer(url);
+                }
+            };
+
+            swipeRefreshLayout.post(thread);
 
         } else {
             loadDataFromDB();
@@ -119,13 +161,6 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             mAdapter.notifyDataSetChanged();
     }
 
-    private void addShotsToDB() {
-
-
-    }
-
-
-
     protected boolean checkNetwork() {
         String cs = Context.CONNECTIVITY_SERVICE;
         ConnectivityManager cm = (ConnectivityManager)
@@ -137,7 +172,38 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         }
     }
 
-    private void loadJsonFromServer() {
+    private void loadJSONFromServer(JSONArray response) throws JSONException {
+        for (int i = 0; i < 50; i++) {
+
+            JSONObject jShot = (JSONObject) response.get(i);
+            //if animated take next shot
+            if (jShot.getString("animated").equals("true")) {
+                continue;
+            }
+            Shot shot = new Shot();
+            shot.setId(jShot.getInt("id"));
+            shot.setTitle(jShot.getString("title"));
+            shot.setDescription(Html.fromHtml(jShot.getString("description")).toString());
+
+
+            JSONObject jImages = jShot.getJSONObject("images");
+            shot.setHidpi(jImages.getString("hidpi"));
+            shot.setNormal(jImages.getString("normal"));
+            shot.setTeaser(jImages.getString("teaser"));
+
+            shots.add(shot);
+            if (shots.size() == 50)
+                break;
+        }
+
+        /*if (shots.size() < 50) {
+            perCount++;
+            loadShotsFromServer(auth + pageTag + pageCount + perTag + perCount + token);
+        }*/
+
+    }
+
+    private void loadShotsFromServer(String url) {
 
         swipeRefreshLayout.setRefreshing(true);
         JsonArrayRequest jsObjRequest = new JsonArrayRequest(Request.Method.GET, url, null, new Response.Listener<JSONArray>() {
@@ -145,45 +211,29 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             @Override
             public void onResponse(JSONArray response) {
 
-                try {
-                    ContentResolver cr = getContentResolver();
-                    cr.delete(DataForDB.FeedEntry.CONTENT_URI, null, null);
-                } catch (Exception e) {
+                if (shots.size() == perCount) {
+                    try {
+                        ContentResolver cr = getContentResolver();
+                        cr.delete(DataForDB.FeedEntry.CONTENT_URI, null, null);
+                    } catch (Exception e) {
+                    }
                 }
 
                 try {
-                    shots.clear();
-                    for (int i = 0; i < 50; i++) {
+                    if (shots.size() == 50)
+                        shots.clear();
 
-                        JSONObject jShot = (JSONObject) response.get(i);
-                        //if animated take next shot
-                        if (jShot.getString("animated").equals("true")) {
-                            continue;
-                        }
-                        Shot shot = new Shot();
-                        shot.setId(jShot.getInt("id"));
-                        shot.setTitle(jShot.getString("title"));
-                        shot.setDescription(stripHtml(jShot.getString("description")));
-
-
-                        JSONObject jImages = jShot.getJSONObject("images");
-                        shot.setHidpi(jImages.getString("hidpi"));
-                        shot.setNormal(jImages.getString("normal"));
-                        shot.setTeaser(jImages.getString("teaser"));
-
-                        shots.add(shot);
-
-                    }
-                    mAdapter.notifyDataSetChanged();
-
+                    loadJSONFromServer(response);
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
 
-                swipeRefreshLayout.setRefreshing(false);
-                TheTask savetoDB = new TheTask();
 
-                savetoDB.execute();
+                    mAdapter.notifyDataSetChanged();
+                    swipeRefreshLayout.setRefreshing(false);
+                    LoadToDBTask saveToDB = new LoadToDBTask();
+                    saveToDB.execute();
+
             }
 
         }, new Response.ErrorListener() {
@@ -203,24 +253,65 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             }
         };
 
-        addShotsToDB();
+
         // Adding request to request queue
         AppController.getInstance().addToRequestQueue(jsObjRequest);
+
+
     }
 
-    public String stripHtml(String html) {
-        return Html.fromHtml(html).toString();
-    }
+    private void loadShotsFromServer2(String url) {
 
+        swipeRefreshLayout.setRefreshing(true);
+        JsonArrayRequest jsObjRequest = new JsonArrayRequest(Request.Method.GET, url, null, new Response.Listener<JSONArray>() {
+
+            @Override
+            public void onResponse(JSONArray response) {
+
+                try {
+                    loadJSONFromServer(response);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                mAdapter.notifyDataSetChanged();
+                swipeRefreshLayout.setRefreshing(false);
+                LoadToDBTask saveToDB = new LoadToDBTask();
+                saveToDB.execute();
+
+            }
+
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                // TODO Auto-generated method stub
+                swipeRefreshLayout.setRefreshing(false);
+            }
+        }) {
+
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                HashMap<String, String> headers = new HashMap<String, String>();
+                headers.put("Content-Type", "application/json; charset=utf-8");
+                return headers;
+            }
+        };
+
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(jsObjRequest);
+
+
+    }
 
     @Override
     public void onRefresh() {
-        loadJsonFromServer();
+        pageCount = 1;
+        loadShotsFromServer(url);
     }
 
-
-    class TheTask extends AsyncTask<Void, Void, String> {
-
+    class LoadToDBTask extends AsyncTask<Void, Void, String> {
         @Override
         protected String doInBackground(Void... params) {
             for (int i = 0; i < shots.size(); i++) {
@@ -228,6 +319,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             }
             return null;
         }
+
         public void addDataToDB(Shot shot) {
             values = new ContentValues();
             values.put(FeedEntry.TITLE, shot.getTitle());
@@ -236,13 +328,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             values.put(FeedEntry.HIDPI, shot.getHidpi());
             values.put(FeedEntry.NORMAL, shot.getNormal());
             values.put(FeedEntry.TEASER, shot.getTeaser());
-            Uri newUri = getContentResolver().insert(FeedEntry.CONTENT_URI, values);
-            //TheTask savetoDB = new TheTask();
-
-            //savetoDB.execute(values);
-            //Log.d("tag", "insert, result Uri : " + newUri.toString());
+            getContentResolver().insert(FeedEntry.CONTENT_URI, values);
         }
-
-
     }
 }

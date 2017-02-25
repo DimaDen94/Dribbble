@@ -1,10 +1,15 @@
 package com.jetruby.dribbble.adapter;
 
 import android.content.Context;
+import android.content.res.Resources;
+import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
+import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -21,6 +26,7 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.MyViewHo
 
     private List<Shot> shots;
     private Context mContext;
+    int height;
 
     public class MyViewHolder extends RecyclerView.ViewHolder {
         public ImageView thumbnail;
@@ -37,6 +43,9 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.MyViewHo
 
 
     public GalleryAdapter(Context context, List<Shot> shots) {
+        WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        Display display = wm.getDefaultDisplay();
+        height = display.getHeight();
         mContext = context;
         this.shots = shots;
     }
@@ -45,6 +54,13 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.MyViewHo
     public MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View itemView = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.gallery_thumbnail, parent, false);
+
+        GridLayoutManager.LayoutParams params = (GridLayoutManager.LayoutParams) itemView.getLayoutParams();
+        if (params.height > height / 2) {
+            params.height = height / 2;
+        }
+        Log.d("log", "height = " + params.height + "   " + height);
+        itemView.setLayoutParams(params);
 
         return new MyViewHolder(itemView);
     }
@@ -56,27 +72,28 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.MyViewHo
         Glide.with(mContext)
                 .load(chooseLink(shot))
                 .thumbnail(0.01f)
-                .dontAnimate()
                 .crossFade()
                 .into(holder.thumbnail);
-        if (!shot.getTitle().equals("null"))
-            holder.title.setText(shot.getTitle());
-        else
-            holder.title.setText("");
-        holder.description.setText(shot.getDescription());
 
+        holder.title.setText(shot.getTitle());
+        if (!shot.getDescription().equals("null"))
+            holder.description.setText(shot.getDescription());
+        else
+            holder.description.setText("");
     }
 
     @Override
     public int getItemCount() {
         return shots.size();
     }
-    private String chooseLink(Shot shot){
-        if(shot.getHidpi()!=null&&!shot.getHidpi().equals("null"))
+
+    private String chooseLink(Shot shot) {
+        if (shot.getHidpi() != null && !shot.getHidpi().equals("null"))
             return shot.getHidpi();
-        else if(!shot.getNormal().equals("null"))
+        else if (!shot.getNormal().equals("null"))
             return shot.getNormal();
         else return shot.getTeaser();
 
     }
+
 }
