@@ -40,24 +40,21 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
     private static final String auth = "https://api.dribbble.com/v1/shots?";
     private static final String token = "&access_token=b37bed181156700973bdaf9d2ca0d749a04723719f524a27d67303421fbba5b3";
 
-    String pageTag = "pageTag=";
-    volatile int pageCount = 1;
+    private static final String pageTag = "page=";
+    private int pageCount = 1;
 
-    String perTag = "&per_page=";
-    int perCount = 50;
+    private static final String perTag = "&per_page=";
+    private int perCount = 50;
 
-    volatile String url = auth + pageTag + pageCount + perTag + perCount + token;
+    private String url = auth + pageTag + pageCount + perTag + perCount + token;
 
-    ContentValues values;
+    private ContentValues values;
     private ArrayList<Shot> shots;
     private GalleryAdapter mAdapter;
     private RecyclerView recyclerView;
     private SwipeRefreshLayout swipeRefreshLayout;
 
-
-    private boolean loading = true;
-    int pastVisiblesItems, visibleItemCount, totalItemCount;
-    GridLayoutManager mLayoutManager;
+    private GridLayoutManager mLayoutManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,48 +67,11 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         shots = new ArrayList<>();
         mAdapter = new GalleryAdapter(this, shots);
 
-
-
-
-
-
-
         mLayoutManager = new GridLayoutManager(getApplicationContext(), 1);
 
         recyclerView.setLayoutManager(mLayoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.setAdapter(mAdapter);
-
-
-        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                if (dy > 0) //check for scroll down
-                {
-                    visibleItemCount = mLayoutManager.getChildCount();
-                    totalItemCount = mLayoutManager.getItemCount();
-                    pastVisiblesItems = mLayoutManager.findFirstVisibleItemPosition();
-
-                    if (loading) {
-                        if ((visibleItemCount + pastVisiblesItems) >= totalItemCount) {
-                            loading = false;
-
-                           //its not work, i don't know why
-                            pageCount++;
-                            Runnable thread = new Runnable() {
-                                @Override
-                                public void run() {
-                                    loadShotsFromServer2(url);
-                                }
-                            };
-                            thread.run();
-
-                        }
-                    }
-                }
-            }
-        });
-
 
         swipeRefreshLayout.setOnRefreshListener(this);
         if (checkNetwork()) {
@@ -173,7 +133,8 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
 
     private void loadJSONFromServer(JSONArray response) throws JSONException {
         for (int i = 0; i < 50; i++) {
-
+            if (shots.size() > 50)
+                break;
             JSONObject jShot = (JSONObject) response.get(i);
             //if animated take next shot
             if (jShot.getString("animated").equals("true")) {
@@ -191,14 +152,13 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             shot.setTeaser(jImages.getString("teaser"));
 
             shots.add(shot);
-            if (shots.size() == 50)
-                break;
+
         }
 
-        /*if (shots.size() < 50) {
-            perCount++;
+        if (shots.size() < 50) {
+            pageCount++;
             loadShotsFromServer(auth + pageTag + pageCount + perTag + perCount + token);
-        }*/
+        }
 
     }
 
